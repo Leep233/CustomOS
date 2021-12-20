@@ -4,7 +4,8 @@ NOMARL_COLOR EQU 1000_1111B
 SECTION loader vstart=0x500
     mov ax,0xb800
     mov fs,ax
-
+    
+    
     mov byte [fs:0x00],'c'
     mov byte [fs:0x01],NOMARL_COLOR
 

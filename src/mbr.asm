@@ -5,6 +5,7 @@ section mbr vstart=0x7c00
     mov cx,1
     mov eax,1
 
+ 
     jmp read_disk_16
 
     jmp 0x0000:0x500

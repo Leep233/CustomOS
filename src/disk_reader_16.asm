@@ -3,6 +3,7 @@
 ;// cl: 读取的扇区数量
 ;// eax:LBA模式下 最开始读取的扇区下标
 read_disk_16:
+  
    ; //保存需要加载到的地址
     push si
     push cx
