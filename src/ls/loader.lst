@@ -1,0 +1,117 @@
+      1                                  
+     2                                  NOMARL_COLOR EQU 1000_1111B
+     3                                  SWMP_HEX_FLAG EQU 0x534d4150
+     4                                  
+     5                                  ARDS_SIZE EQU 20
+     6                                  
+     7                                  SECTION loader vstart=0x500
+     8                                  
+     9 00000000 00000000                    total_memory_bytes dd 0
+    10                                  
+    11 00000004 B800B8                      mov ax,0xb800
+    12 00000007 8EE0                        mov fs,ax
+    13                                      
+    14                                      
+    15 00000009 64C606000063                mov byte [fs:0x00],'c'
+    16 0000000F 64C60601008F                mov byte [fs:0x01],NOMARL_COLOR
+    17                                  
+    18 00000015 64C60602006F                mov byte [fs:0x02],'o'
+    19 0000001B 64C60603008F                mov byte [fs:0x03],NOMARL_COLOR
+    20                                  
+    21 00000021 64C60604006D                mov byte [fs:0x04],'m'
+    22 00000027 64C60605008F                mov byte [fs:0x05],NOMARL_COLOR
+    23                                  
+    24 0000002D 64C606060070                mov byte [fs:0x06],'p'
+    25 00000033 64C60607008F                mov byte [fs:0x07],NOMARL_COLOR
+    26                                  
+    27 00000039 64C60608006C                mov byte [fs:0x08],'l'
+    28 0000003F 64C60609008F                mov byte [fs:0x09],NOMARL_COLOR
+    29                                  
+    30 00000045 64C6060A0065                mov byte [fs:0x0a],'e'
+    31 0000004B 64C6060B008F                mov byte [fs:0x0b],NOMARL_COLOR
+    32                                  
+    33 00000051 64C6060C0074                mov byte [fs:0x0c],'t'
+    34 00000057 64C6060D008F                mov byte [fs:0x0d],NOMARL_COLOR
+    35                                  
+    36 0000005D 64C6060E0065                mov byte [fs:0x0e],'e'
+    37 00000063 64C6060F008F                mov byte [fs:0x0f],NOMARL_COLOR
+    38                                  
+    39 00000069 64C606100064                mov byte [fs:0x10],'d'
+    40 0000006F 64C60611008F                mov byte [fs:0x11],NOMARL_COLOR
+    41                                  
+    42 00000075 64C606120020                mov byte [fs:0x12],' '
+    43 0000007B 64C60613008F                mov byte [fs:0x13],NOMARL_COLOR
+    44                                  
+    45 00000081 64C606140021                mov byte [fs:0x14],'!'
+    46 00000087 64C60615008F                mov byte [fs:0x15],NOMARL_COLOR
+    47                                  
+    48                                  
+    49                                  
+    50                                      ;jmp $
+    51                                  
+    52                                  ;检测内存
+    53                                  detect_memory_e820:
+    54 0000008D 6631DB                      xor ebx,ebx
+    55 00000090 66BA50414D53                mov edx,SWMP_HEX_FLAG   
+    56 00000096 BF[0000]                    mov di,ards_buf
+    57                                  
+    58                                      .get_memory_loop_e820:
+    59 00000099 66B820E80000                    mov eax,0xE820
+    60 0000009F 66B914000000                    mov ecx,ARDS_SIZE ;ards地址范围20字节
+    61 000000A5 CD15                            int 0x15
+    62 000000A7 7232                            jc detect_memory_e801 ;如果cf标志位 =1 跳转e801 指令读取
+    63 000000A9 01CF                            add di,cx
+    64 000000AB FF06[F000]                      inc word [ards_count] ;ards数量+1
+    65 000000AF 6683FB00                        cmp ebx,0  ;如果ebx=0，说明ards 全部返回 
+    66 000000B3 75E4                            jnz .get_memory_loop_e820
+    67                                  
+    68 000000B5 8B0E[F000]                  mov cx,[ards_count]67
+    69 000000B9 66BB[00000000]              mov ebx,ards_buf
+    70 000000BF 6631D2                      xor edx,edx
+    71                                  
+    72                                      ;寻找最大的内存区域
+    73                                      .find_max_memory_area:
+    74 000000C2 66678B03                        mov eax,[ebx]
+    75 000000C6 6667034308                      add eax,[ebx+8]
+    76 000000CB 6683C314                        add ebx,ARDS_SIZE   ;指向下一个ards
+    77 000000CF 6639C2                          cmp edx,eax
+    78 000000D2 7D03                            jge .next_ards
+    79 000000D4 6689C2                          mov edx,eax
+    80                                          
+    81                                          .next_ards:
+    82 000000D7 E2E9                                loop .find_max_memory_area
+    83                                  
+    84 000000D9 EB28                            jmp get_memory_finshed
+    85                                  
+    86                                  
+    87                                  
+    88                                      
+    89                                  detect_memory_e801:
+    90 000000DB B801E8                      mov ax,0xe801
+    91 000000DE CD15                        int 0x15
+    92 000000E0 7210                        jc detect_memory_88 ;如果标志为cf=1 那么说明获取失败，使用88 形式获取内存
+    93                                     ; mov cx,1024 
+    94                                     ; mul cx   ;也可以写做 shl eax,10
+    95 000000E2 66C1E00A                    shl eax,10  ;等同于 eax * 2^10 次方 2^10 = 1024
+    96 000000E6 66C1E310                    shl ebx,16  ; edx 的单位为64kb 所以需要 edx*64kb , 64kb = 2^16 = 左移 16位
+    97 000000EA 6601D8                      add eax,ebx ;eax * 1024 + ebx * 64 * 1024
+    98 000000ED 6689C2                      mov edx,eax
+    99 000000F0 EB11                        jmp get_memory_finshed
+   100                                  
+   101                                  detect_memory_88:
+   102 000000F2 B488                        mov ah,0x88
+   103 000000F4 CD15                        int 0x15
+   104 000000F6 7209                        jc detect_memory_error
+   105 000000F8 66C1E01A                    shl eax,26
+   106 000000FC 6689C2                      mov edx,eax
+   107 000000FF EB02                        jmp get_memory_finshed
+   108                                  
+   109                                  detect_memory_error:
+   110 00000101 EBFE                        jmp $
+   111                                  
+   112                                  get_memory_finshed:
+   113 00000103 668916[0000]                mov [total_memory_bytes],edx
+   114                                  
+   115                                  SECTION .data:
+   116 00000000 00<rep F0h>                 ards_buf times (ARDS_SIZE*12) db 0
+   117 000000F0 0000                        ards_count dw 0

@@ -2,7 +2,7 @@
 section mbr vstart=0x7c00
 
 ;clear display
-   mov ax,0x0600
+    mov ax,0x0600
     mov bx,0x0700
     mov cx,0
     mov dx,0x184f
@@ -18,14 +18,12 @@ section mbr vstart=0x7c00
 
     ;jmp $
    
-     %include ".\src\disk_reader_16.asm"
+    %include ".\src\disk_reader_16.asm"
 
 
+    times 510-($-$$) db 0
     
- 
-
-times 510-($-$$) db 0
-db 0x55,0xaa
+    db 0x55,0xaa
 
 
 
