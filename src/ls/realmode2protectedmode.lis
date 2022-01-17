@@ -1,0 +1,269 @@
+     1                                  
+     2                                  
+     3                                  NOMARL_COLOR EQU 1000_1111B
+     4                                  SWMP_HEX_FLAG EQU 0x534d4150
+     5                                  ARDS_SIZE EQU 20
+     6                                  
+     7                                  section loader vstart=0x500
+     8                                  
+     9 00000000 00000000                    total_memory_bytes dd 0
+    10                                  
+    11                                  
+    12                                      ;call detect_memory_code.detect_memory_e820
+    13                                  
+    14 00000004 EB26                        jmp loader_start
+    15                                  
+    16                                      %include ".\src\realmode2protectedmode.asm"
+    17                              <1> ;cpu real mode to protected mode
+    18                              <1> ;last update : 2022-1-10
+    19                              <1> 
+    20                              <1> ;=====================================
+    21                              <1> 
+    22                              <1> DESC_G_4K   EQU 1_0_0_0_0000_0_00_0_0000_00000000B
+    23                              <1> DESC_DB_32  EQU 0_1_0_0_0000_0_00_0_0000_00000000B
+    24                              <1> DESC_L_32   EQU 0_0_0_0_0000_0_00_0_0000_00000000B
+    25                              <1> DESC_L_64   EQU 0_0_1_0_0000_0_00_0_0000_00000000B
+    26                              <1> DESC_AVL    EQU 0_0_0_0_0000_0_00_0_0000_00000000B
+    27                              <1> DESC_P      EQU 1_00_0_0000_00000000B
+    28                              <1> DESC_DPL    EQU 00_0_0000_00000000B
+    29                              <1> DESC_S_F    EQU 1_0000_00000000B
+    30                              <1> DESC_S_T    EQU 0_0000_00000000B
+    31                              <1> TI_GDT EQU 000b
+    32                              <1> TI_LDT EQU 100b
+    33                              <1> 
+    34                              <1> RPL_0 EQU 00B
+    35                              <1> RPL_1 EQU 01B
+    36                              <1> RPL_2 EQU 10B
+    37                              <1> RPL_3 EQU 11B
+    38                              <1> 
+    39                              <1> ;descriptor limit hight 4bit mask
+    40                              <1> LIMIT_HIGHT_4_MASK EQU 0xF0000
+    41                              <1> ;descriptor limit low 16 bit mask
+    42                              <1> LIMIT_LOW_16_MASK   EQU 0x0FFFF
+    43                              <1> 
+    44                              <1> ADDR_HIGHT_8_MASK EQU 0xFF000000
+    45                              <1> ADDR_MID_8_MASK   EQU 0x00FF0000
+    46                              <1> ADDR_LOW_16_MASK  EQU 0x0000FFFF
+    47                              <1> 
+    48                              <1> 
+    49                              <1> ;=====[code descriptor]======
+    50                              <1> ;code's descriptor base address
+    51                              <1> DESC_CODE_BASE_ADDR EQU 0x00000000
+    52                              <1> ;code's descriptor limit
+    53                              <1> DESC_CODE_LIMIT EQU 0xFFFFF
+    54                              <1> 
+    55                              <1> DESC_CODE_LIMIT_HIGH_4 EQU DESC_CODE_LIMIT & LIMIT_HIGHT_4_MASK
+    56                              <1> 
+    57                              <1> DESC_CODE_LIMIT_LOW_16 EQU DESC_CODE_LIMIT & LIMIT_LOW_16_MASK
+    58                              <1> 
+    59                              <1> DESC_CODE_ADDR_HIGHT_8 EQU DESC_CODE_BASE_ADDR & ADDR_HIGHT_8_MASK
+    60                              <1> 
+    61                              <1> DESC_CODE_ADDR_MID_8   EQU DESC_CODE_BASE_ADDR & ADDR_MID_8_MASK
+    62                              <1> 
+    63                              <1> DESC_CODE_ADDR_LOW_16   EQU DESC_CODE_BASE_ADDR & ADDR_LOW_16_MASK
+    64                              <1> 
+    65                              <1> DESC_CODE_TYPE         EQU 1000_00000000B
+    66                              <1> ;==================================================================================================================================
+    67                              <1> ;=| addr's high 8bit | G | D/B | L | AVL | code limit's high 4bit | P | DPL | is system segment | desc's type | addr's mid 8 bit |=
+    68                              <1> ;==================================================================================================================================
+    69                              <1> ;                                                                    1   01           1             1000          0000 0000
+    70                              <1> DESC_CODE_HIGHT_32    EQU  DESC_CODE_ADDR_HIGHT_8 + DESC_G_4K + DESC_DB_32 + DESC_L_32 + DESC_AVL + DESC_CODE_LIMIT_HIGH_4 + DESC_P + DESC_DPL + DESC_S_F + DESC_CODE_TYPE + DESC_CODE_ADDR_MID_8
+    71                              <1> 
+    72                              <1> ;00000000_1_1_0_0_1111_1_10_1_1000_00000000b
+    73                              <1> 
+    74                              <1> ;=====[end code discriptor]===== 
+    75                              <1> 
+    76                              <1> ;=====[data discriptor]=====
+    77                              <1> DESC_DATA_BASE_ADDR EQU 0
+    78                              <1> DESC_DATA_LIMIT EQU 0xFFFFF
+    79                              <1> DESC_DATA_LIMIT_HIGHT_4 EQU DESC_DATA_LIMIT  & LIMIT_HIGHT_4_MASK
+    80                              <1> DESC_DATA_LIMIT_LOW_16   EQU  DESC_DATA_LIMIT & LIMIT_LOW_16_MASK
+    81                              <1> DESC_DATA_ADDR_HIGHT_8 EQU DESC_DATA_BASE_ADDR & ADDR_HIGHT_8_MASK
+    82                              <1> DESC_DATA_ADDR_MID_8   EQU DESC_DATA_BASE_ADDR & ADDR_MID_8_MASK
+    83                              <1> DESC_DATA_ADDR_LOW_16  EQU DESC_DATA_BASE_ADDR & ADDR_LOW_16_MASK
+    84                              <1> DESC_DATA_TYPE EQU 0010_00000000B
+    85                              <1> 
+    86                              <1> DESC_DATA_HIGT_32 EQU DESC_DATA_ADDR_HIGHT_8 + DESC_G_4K + DESC_DB_32 + DESC_L_32 + DESC_AVL + DESC_DATA_LIMIT_HIGHT_4 + DESC_P + DESC_DPL + DESC_S_F + DESC_DATA_TYPE + DESC_DATA_ADDR_MID_8
+    87                              <1> 
+    88                              <1> ;=====[end data discriptor]=====
+    89                              <1> 
+    90                              <1> ;=====[video discriptor]=====
+    91                              <1> DESC_VIDEO_BASE_ADDR EQU 0x000B8000
+    92                              <1> DESC_VIDEO_LIMIT EQU 7;((0xBFFFF - 0xB8000 ) / 4096);4k
+    93                              <1> DESC_VIDEO_LIMIT_HIGHT_4 EQU DESC_VIDEO_LIMIT  & LIMIT_HIGHT_4_MASK
+    94                              <1> DESC_VIDEO_LIMIT_LOW_16   EQU  DESC_VIDEO_LIMIT & LIMIT_LOW_16_MASK
+    95                              <1> DESC_VIDEO_ADDR_HIGHT_8 EQU DESC_VIDEO_BASE_ADDR & ADDR_HIGHT_8_MASK
+    96                              <1> DESC_VIDEO_ADDR_MID_8   EQU DESC_VIDEO_BASE_ADDR & ADDR_MID_8_MASK
+    97                              <1> DESC_VIDEO_ADDR_LOW_16  EQU DESC_VIDEO_BASE_ADDR & ADDR_LOW_16_MASK
+    98                              <1> DESC_VIDEO_TYPE EQU 0010_00000000B
+    99                              <1> DESC_VIDEO_HIGT_32 EQU DESC_VIDEO_ADDR_HIGHT_8 + DESC_G_4K + DESC_DB_32 + DESC_L_32 + DESC_AVL + DESC_VIDEO_LIMIT_HIGHT_4 + DESC_P + DESC_DPL + DESC_S_F + DESC_VIDEO_TYPE + DESC_VIDEO_ADDR_MID_8
+   100                              <1> 
+   101                              <1> ;=====[end video discriptor]=====
+   102                              <1> 
+   103                              <1> GDT_BASE_ADDR:
+   104 00000006 00000000            <1>     dd 0
+   105 0000000A 00000000            <1>     dd 0    
+   106                              <1> GDT_DESC_CODE:;(DESC_CODE_ADDR_LOW_16<<16)
+   107 0000000E FFFF0000            <1>     dd  (DESC_CODE_ADDR_LOW_16<<16)+ DESC_CODE_LIMIT_LOW_16
+   108 00000012 0098CF00            <1>     dd DESC_CODE_HIGHT_32
+   109                              <1> 
+   110                              <1> GDT_DESC_DATA:
+   111 00000016 FFFF0000            <1>     dd (DESC_DATA_ADDR_LOW_16<<16) + DESC_DATA_LIMIT_LOW_16
+   112 0000001A 0092CF00            <1>     dd DESC_DATA_HIGT_32
+   113                              <1> GDT_DESC_VIDEO:
+   114 0000001E 07000080            <1>     dd (DESC_VIDEO_ADDR_LOW_16<<16) + DESC_VIDEO_LIMIT_LOW_16 ;0x80000007;
+   115 00000022 0092CB00            <1>     dd DESC_VIDEO_HIGT_32
+   116                              <1> 
+   117                              <1> GDT_SIZE EQU $-GDT_BASE_ADDR
+   118                              <1> GDT_LIMIT EQU GDT_SIZE-1
+   119                              <1> 
+   120                              <1> selector_code EQU (0x0001<<3) + RPL_0 + TI_GDT
+   121                              <1> selector_data EQU (0x0002<<3) + RPL_0 + TI_GDT
+   122                              <1> selector_video EQU (0x0003<<3) + RPL_0 + TI_GDT
+   123                              <1> 
+   124                              <1> ;open 20a
+   125                              <1> 
+   126 00000026 1F00                <1> gdt_ptr dw GDT_LIMIT
+   127 00000028 [06000000]          <1>         dd GDT_BASE_ADDR
+   128                              <1> 
+   129                              <1> loader_start:
+   130 0000002C E492                <1> in al,0x92
+   131 0000002E 0C02                <1> or al,0000_0010b
+   132 00000030 E692                <1> out 0x92,al
+   133                              <1> ;load gdt
+   134 00000032 0F0116[2600]        <1> lgdt [gdt_ptr]
+   135                              <1> ; set cr0 reg first bit to 1
+   136 00000037 0F20C0              <1> mov eax,cr0
+   137 0000003A 6683C801            <1> or eax,1
+   138 0000003E 0F22C0              <1> mov cr0,eax
+   139                              <1> 
+   140 00000041 66EA[49000000]0800  <1> jmp dword selector_code:mode_start
+   141                              <1> 
+   142                              <1> [bits 32]
+   143                              <1> mode_start:
+   144 00000049 66B81000            <1>     mov ax,selector_data
+   145 0000004D 8ED8                <1>     mov ds,ax,
+   146 0000004F 8EC0                <1>     mov es,ax,
+   147 00000051 8ED0                <1>     mov ss,ax,
+   148 00000053 BC00050000          <1>     mov esp,0x500
+   149 00000058 66B81800            <1>     mov ax,selector_video
+   150 0000005C 8EE8                <1>     mov gs,ax
+   151                              <1> 
+   152 0000005E 65C605A000000070    <1>     mov byte [gs:160],'p'
+   153                              <1>   
+   154                              <1> 
+   155 00000066 EBFE                <1>     jmp $
+   156                              <1> 
+    17                                  
+    18 00000068 EBFE                        jmp $
+    19                                  
+    20                                  print:
+    21 0000006A 66B800B8                    mov ax,0xb800
+    22 0000006E 8EE0                        mov fs,ax    
+    23                                      
+    24 00000070 64C6050000000063            mov byte [fs:0x00],'c'
+    25 00000078 64C605010000008F            mov byte [fs:0x01],NOMARL_COLOR
+    26                                  
+    27 00000080 64C605020000006F            mov byte [fs:0x02],'o'
+    28 00000088 64C605030000008F            mov byte [fs:0x03],NOMARL_COLOR
+    29                                  
+    30 00000090 64C605040000006D            mov byte [fs:0x04],'m'
+    31 00000098 64C605050000008F            mov byte [fs:0x05],NOMARL_COLOR
+    32                                  
+    33 000000A0 64C6050600000070            mov byte [fs:0x06],'p'
+    34 000000A8 64C605070000008F            mov byte [fs:0x07],NOMARL_COLOR
+    35                                  
+    36 000000B0 64C605080000006C            mov byte [fs:0x08],'l'
+    37 000000B8 64C605090000008F            mov byte [fs:0x09],NOMARL_COLOR
+    38                                  
+    39 000000C0 64C6050A00000065            mov byte [fs:0x0a],'e'
+    40 000000C8 64C6050B0000008F            mov byte [fs:0x0b],NOMARL_COLOR
+    41                                  
+    42 000000D0 64C6050C00000074            mov byte [fs:0x0c],'t'
+    43 000000D8 64C6050D0000008F            mov byte [fs:0x0d],NOMARL_COLOR
+    44                                  
+    45 000000E0 64C6050E00000065            mov byte [fs:0x0e],'e'
+    46 000000E8 64C6050F0000008F            mov byte [fs:0x0f],NOMARL_COLOR
+    47                                  
+    48 000000F0 64C6051000000064            mov byte [fs:0x10],'d'
+    49 000000F8 64C605110000008F            mov byte [fs:0x11],NOMARL_COLOR
+    50                                  
+    51 00000100 64C6051200000020            mov byte [fs:0x12],' '
+    52 00000108 64C605130000008F            mov byte [fs:0x13],NOMARL_COLOR
+    53                                  
+    54 00000110 64C6051400000021            mov byte [fs:0x14],'!'
+    55 00000118 64C605150000008F            mov byte [fs:0x15],NOMARL_COLOR
+    56 00000120 C3                      ret
+    57                                  
+    58                                  section detect_memory_code
+    59                                  ;检测内存
+    60                                      .detect_memory_e820:
+    61 00000000 31DB                        xor ebx,ebx
+    62 00000002 BA50414D53                  mov edx,SWMP_HEX_FLAG   
+    63 00000007 66BF[0000]                  mov di,ards_buf
+    64                                  
+    65                                      .get_memory_loop_e820:
+    66 0000000B B820E80000                      mov eax,0xE820
+    67 00000010 B914000000                      mov ecx,ARDS_SIZE ;ards地址范围20字节
+    68 00000015 CD15                            int 0x15
+    69 00000017 722F                            jc detect_memory_e801 ;如果cf标志位 =1 跳转e801 指令读取
+    70 00000019 6601CF                          add di,cx
+    71 0000001C 66FF05[F0000000]                inc word [ards_count] ;ards数量+1
+    72 00000023 83FB00                          cmp ebx,0  ;如果ebx=0，说明ards 全部返回 
+    73 00000026 75E3                            jnz .get_memory_loop_e820
+    74                                  
+    75 00000028 668B0D[F0000000]            mov cx,[ards_count]
+    76 0000002F BB[00000000]                mov ebx,ards_buf
+    77 00000034 31D2                        xor edx,edx
+    78                                  
+    79                                      ;寻找最大的内存区域
+    80                                      .find_max_memory_area:
+    81 00000036 8B03                            mov eax,[ebx]
+    82 00000038 034308                          add eax,[ebx+8]
+    83 0000003B 83C314                          add ebx,ARDS_SIZE   ;指向下一个ards
+    84 0000003E 39C2                            cmp edx,eax
+    85 00000040 7D02                            jge .next_ards
+    86 00000042 89C2                            mov edx,eax
+    87                                          
+    88                                          .next_ards:
+    89 00000044 E2F0                                loop .find_max_memory_area
+    90                                  
+    91 00000046 EB23                            jmp get_memory_finshed
+    92                                  
+    93                                  
+    94                                  
+    95                                  ; int 0x15  E801指令检测内存
+    96                                  detect_memory_e801:
+    97 00000048 66B801E8                    mov ax,0xe801
+    98 0000004C CD15                        int 0x15
+    99 0000004E 720C                        jc detect_memory_88 ;如果标志为cf=1 那么说明获取失败，使用88 形式获取内存
+   100                                     ; mov cx,1024 
+   101                                     ; mul cx   ;也可以写做 shl eax,10
+   102 00000050 C1E00A                      shl eax,10  ;等同于 eax * 2^10 次方 2^10 = 1024
+   103 00000053 C1E310                      shl ebx,16  ; edx 的单位为64kb 所以需要 edx*64kb , 64kb = 2^16 = 左移 16位
+   104 00000056 01D8                        add eax,ebx ;eax * 1024 + ebx * 64 * 1024
+   105 00000058 89C2                        mov edx,eax
+   106 0000005A EB0F                        jmp get_memory_finshed
+   107                                  
+   108                                  detect_memory_88:
+   109 0000005C B488                        mov ah,0x88
+   110 0000005E CD15                        int 0x15
+   111 00000060 7207                        jc detect_memory_error
+   112 00000062 C1E01A                      shl eax,26
+   113 00000065 89C2                        mov edx,eax
+   114 00000067 EB02                        jmp get_memory_finshed
+   115                                  
+   116                                  detect_memory_error:
+   117 00000069 EBFE                        jmp $
+   118                                  
+   119                                  get_memory_finshed:
+   120 0000006B 8915[00000000]              mov [total_memory_bytes],edx
+   121 00000071 C3                          ret
+   122                                  
+   123                                  section .data
+   124 00000000 00<rep F0h>                 ards_buf times (ARDS_SIZE*12) db 0
+   125 000000F0 0000                        ards_count dw 0
+   126                                  
+   127                                  ;====================
+   128                                  ;进入保护模式代码
+   129                                  ;====================

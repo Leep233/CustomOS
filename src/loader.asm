@@ -1,16 +1,15 @@
 
+
 NOMARL_COLOR EQU 1000_1111B
 SWMP_HEX_FLAG EQU 0x534d4150
-
 ARDS_SIZE EQU 20
 
-SECTION loader vstart=0x500
+section loader vstart=0x500
 
     total_memory_bytes dd 0
 
-    mov ax,0xb800
-    mov fs,ax
-    
+   mov ax,0xb800
+    mov fs,ax    
     
     mov byte [fs:0x00],'c'
     mov byte [fs:0x01],NOMARL_COLOR
@@ -44,13 +43,19 @@ SECTION loader vstart=0x500
 
     mov byte [fs:0x14],'!'
     mov byte [fs:0x15],NOMARL_COLOR
+    ;call detect_memory_code.detect_memory_e820
+
+    jmp loader_start
+
+    %include ".\src\realmode2protectedmode.asm"
+
+    jmp $
 
 
 
-    ;jmp $
-
+section detect_memory_code
 ;检测内存
-detect_memory_e820:
+    .detect_memory_e820:
     xor ebx,ebx
     mov edx,SWMP_HEX_FLAG   
     mov di,ards_buf
@@ -85,7 +90,7 @@ detect_memory_e820:
 
 
 
-    
+; int 0x15  E801指令检测内存
 detect_memory_e801:
     mov ax,0xe801
     int 0x15
@@ -111,7 +116,12 @@ detect_memory_error:
 
 get_memory_finshed:
     mov [total_memory_bytes],edx
+    ret
 
-SECTION .data:
+section .data
     ards_buf times (ARDS_SIZE*12) db 0
     ards_count dw 0
+
+;====================
+;进入保护模式代码
+;====================

@@ -9,7 +9,7 @@ section mbr vstart=0x7c00
     int 0x10
 
     mov si,0x500
-    mov cx,1
+    mov cx,5
     mov eax,1
 
     jmp read_disk_16
